@@ -3,6 +3,7 @@ import json
 import os
 
 import discord
+import requests
 from discord.ext import commands, tasks
 import datetime
 from datetime import datetime
@@ -18,6 +19,8 @@ with open("jsons/init.json") as f:
     KEY = config.get("api-key")
 
 intents = discord.Intents.all()
+intents.members = True
+intents.message_content = True
 bot = commands.Bot(command_prefix=prefix, intents=intents, owner_id=1416884702370988052, help_command=None)
 
 # == rank navne
@@ -37,7 +40,6 @@ def save_links():
         json.dump(linked_users, f, indent=4)
 
 # === Roller ===
-# Funktionen der opdatere folks rank på discord hvis de er steget i rank i rainbow six siege
 async def update_member_role(guild, member, rank):
     rank_tier = rank.split("-")[0].capitalize()  # Fjerner '-3' eller lignende fra ranken
 
@@ -102,17 +104,23 @@ async def update_member_role(guild, member, rank):
             print(f"⚠️ Botten har ikke tilladelser til at tilføje rollen til {member.display_name}")
 
 async def process_member(guild, member):
-    username = linked_users.get(member.name, {}).get("ubiName")
-    if not username:
+    discord_id = str(member.id)  # <= vigtigt
+    user_data = linked_users.get(discord_id)
+
+    if not user_data:
         return
 
-    rank = r6.fetch_rank(username)
+    ubiId = user_data.get("ubiId")
+    if not ubiId:
+        return
+
+    rank = r6.fetch_rank_from_id(ubiId)
     if rank and rank != "Ukendt":
         await update_member_role(guild, member, rank)
     else:
-        print(f"⚠️ Kunne ikke finde rank for {username}")
+        print(f"⚠️ Kunne ikke finde rank for {ubiId}")
 
-# Printer nyttige ting i konsol når botten starter og ændrer dens status på discord
+
 @bot.event
 async def on_ready():
     print(f"✅ Logget ind som {bot.user}")
@@ -121,7 +129,6 @@ async def on_ready():
     await bot.change_presence(activity=discord.Game(name=f"{prefix}r6help | Opdaterer hver time!"))
     update_roles.start()
 
-# Opdaterings loopet der kører 1 gang i timen som tjekker efter folk er steget i rank
 @tasks.loop(minutes=60)
 async def update_roles():
     print(f"🔁 Opdaterer roller... | {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -129,7 +136,7 @@ async def update_roles():
 
     for guild in bot.guilds:
         for member in guild.members:
-            if not member.bot and member.name in linked_users:
+            if not member.bot and str(member.id) in linked_users:
                 members_to_update.append((guild, member))
 
     batch_size = 20
@@ -142,6 +149,7 @@ async def update_roles():
 
         await asyncio.gather(*tasks_in_batch)
         await asyncio.sleep(2)  # Delay mellem batches
+    print("færdig med at opdatere")
 
 async def load():
     for filename in os.listdir("./cogs"):
