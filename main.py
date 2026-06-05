@@ -6,17 +6,21 @@ import discord
 import requests
 from discord.ext import commands, tasks
 import datetime
+from dotenv import load_dotenv
 from datetime import datetime
 
 import apiClass
+load_dotenv()
 
 # === Konfiguration ===
+prefix = os.getenv("PREFIX")
+TOKEN = os.getenv("DISCTOKEN")
+KEY = os.getenv("APIKEY")
 
-with open("jsons/init.json") as f:
-    config = json.load(f)
-    prefix = config.get("prefix")
-    TOKEN = config.get("token")
-    KEY = config.get("api-key")
+with open("jsons/offswitch.json") as f:
+    offswitch_data = json.load(f)
+    off = offswitch_data.get("offswitch")
+
 
 intents = discord.Intents.all()
 intents.members = True
@@ -131,25 +135,30 @@ async def on_ready():
 
 @tasks.loop(minutes=60)
 async def update_roles():
-    print(f"🔁 Opdaterer roller... | {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    members_to_update = []
+    if off == True:
+        print("⛔ Offswitch er aktiveret, opdatering af roller er deaktiveret.")
+        return
+    else:
+        print("✅ Offswitch er deaktiveret, opdatering af roller er aktiveret.")
+        print(f"🔁 Opdaterer roller... | {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        members_to_update = []
 
-    for guild in bot.guilds:
-        for member in guild.members:
-            if not member.bot and str(member.id) in linked_users:
-                members_to_update.append((guild, member))
+        for guild in bot.guilds:
+            for member in guild.members:
+                if not member.bot and str(member.id) in linked_users:
+                    members_to_update.append((guild, member))
 
-    batch_size = 20
-    for i in range(0, len(members_to_update), batch_size):
-        batch = members_to_update[i:i+batch_size]
-        tasks_in_batch = []
+        batch_size = 20
+        for i in range(0, len(members_to_update), batch_size):
+            batch = members_to_update[i:i+batch_size]
+            tasks_in_batch = []
 
-        for guild, member in batch:
-            tasks_in_batch.append(process_member(guild, member))
+            for guild, member in batch:
+                tasks_in_batch.append(process_member(guild, member))
 
-        await asyncio.gather(*tasks_in_batch)
-        await asyncio.sleep(2)  # Delay mellem batches
-    print("færdig med at opdatere")
+            await asyncio.gather(*tasks_in_batch)
+            await asyncio.sleep(2)  # Delay mellem batches
+        print("færdig med at opdatere")
 
 async def load():
     for filename in os.listdir("./cogs"):
