@@ -20,6 +20,10 @@ class Events(commands.Cog):
             await ctx.send(f"**{cmd}** Eksisterer ikke.")
         elif isinstance(error, commands.NotOwner):
             await ctx.send("❌ Du har ikke tilladelser til at bruge denne kommando.")
+        elif isinstance(error, commands.MissingPermissions):
+            await ctx.send("❌ Du har ikke de nødvendige tilladelser til at bruge denne kommando.")
+        elif isinstance(error, commands.BadArgument):
+            await ctx.send("❌ Forkert argument. Tjek kommandoens syntax og prøv igen.")
         else:
             raise error
 
