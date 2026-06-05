@@ -5,9 +5,12 @@ from discord.ext import commands
 import apiClass
 import main
 import json
+import os
+from dotenv import load_dotenv
 import datetime
 from datetime import datetime
 import requests
+load_dotenv()
 
 # === Rank-navne ===
 RANK_NAMES = [
@@ -25,10 +28,7 @@ def save_links():
     with open("jsons/users.json", "w") as f:
         json.dump(linked_users, f, indent=4)
 
-
-with open("jsons/init.json") as f:
-    data = json.load(f)
-    apiKey = data.get("api-key")
+apiKey = os.getenv("APIKEY")
 
 Ejerid = 1416884702370988052
 
@@ -256,6 +256,7 @@ class Comms(commands.Cog):
             print(f"Der skete en fejl {e}")
 
     @commands.command(name="checkban")
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), commands.has_role(1154730280104509502))
     async def checkban(self, ctx, member: discord.Member):
         user_data = linked_users.get(str(member.id))
         if not user_data:
@@ -268,13 +269,29 @@ class Comms(commands.Cog):
             return
 
         status = "AKTIV" if ban["active"] else "UDLØBET"
-
-
-        await ctx.send(
-            f" **{member.display_name}** har været bannet\n"
-            f" Grund: **{ban['reason']}**\n"
-            f" Status: **{status}**"
-        )
+        
+        embedvar = discord.Embed(title=f"Ban status for {member.display_name}", color=discord.Color.red())
+        embedvar.add_field(name="Grund", value=ban["reason"], inline=False)
+        embedvar.add_field(name="Status", value=status, inline=False)
+        embedvar.set_thumbnail(url="https://cdn.discordapp.com/attachments/1365706183645593711/1500841447543537875/banhammer.jpg?ex=69f9e705&is=69f89585&hm=043def4b4cbf357d1803231151bc9c25c29f5809f7a56796e8b667dba9055d90&")
+        await ctx.send(embed=embedvar)
+    
+    @commands.command(name="offswitch")
+    @commands.check_any(commands.is_owner())
+    async def offswitch(self, ctx, args):
+        global off
+        if args.lower() == "on":
+            with open("jsons/offswitch.json", "w") as f:
+                json.dump({"offswitch": True}, f, indent=4)
+            await ctx.send("⛔ Offswitch er nu **AKTIVERET**. Opdatering af roller er deaktiveret.")
+            print("⛔ Offswitch er nu AKTIVERET. Opdatering af roller er deaktiveret.")
+        elif args.lower() == "off":
+            with open("jsons/offswitch.json", "w") as f:
+                json.dump({"offswitch": False}, f, indent=4)            
+            await ctx.send("✅ Offswitch er nu **DEAKTIVERET**. Opdatering af roller er aktiveret.")
+            print("✅ Offswitch er nu DEAKTIVERET. Opdatering af roller er aktiveret.")
+        else:
+            await ctx.send("⚠️ Ugyldigt argument. Brug `!offswitch on` eller `!offswitch off`.")
 
 
 r6 = apiClass.r6api(apiKey)
