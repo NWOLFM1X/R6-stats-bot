@@ -1,10 +1,10 @@
 import requests
-import json
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 
-with open("jsons/init.json") as f:
-    data = json.load(f)
-    apiKey = data.get("api-key")
+API_KEY = os.getenv("APIKEY")
 
 
 class r6api:
@@ -16,7 +16,7 @@ class r6api:
         # Nuværende sæson NIX PILLE
         self.configUrl = "https://r6.statsapi.net/v1/config"
         self.configRes = requests.get(self.configUrl, headers=self.apiHeaders)
-        self.current_season = self.configRes.json()["currentSeason"]
+        #self.current_season = self.configRes.json()["currentSeason"]
 
     def fetch_profile(self, ubi_name: str):
         lookup_url = f"https://r6.statsapi.net/profiles/lookup?displayName={ubi_name}&platform=uplay"
